@@ -1,57 +1,29 @@
-const express = require("express");
-const http = require("http");
-const socketIo = require("socket.io");
-const cors = require("cors");
-const jwtMilddleware = require("./middleware/socket-auth-middleware");
+import express from "express";
+import cors from "cors";
+import index from "./routes/index.js";
+import companyRoute from "./routes/companyRoute.js";
+import "dotenv/config";
+import mongoose from "mongoose";
 
-const port = process.env.PORT || 4001;
-const index = require("./routes/index");
-
+//App config
 const app = express();
+const port = process.env.PORT || 4001;
+const connection_url = `mongodb+srv://${process.env.API_USERNAME}:${process.env.API_PRIVATE_KEY}@cluster0.mwvoa.mongodb.net/chakventory?retryWrites=true&w=majority`;
+const options = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+};
+
+//middlewares
 app.use(
   cors({
     origin: "*",
   })
 );
 app.use(index);
+app.use(companyRoute);
 
-const server = http.createServer(app);
+//DB config
+mongoose.connect(connection_url, options);
 
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-  },
-});
-
-io.use(jwtMilddleware);
-
-let interval;
-
-io.on("connection", (socket) => {
-  console.log("New client connected");
-  if (interval) {
-    clearInterval(interval);
-  }
-  interval = setInterval(() => getApiAndEmit(socket), 1000);
-  socket.on("disconnect", () => {
-    console.log("Client disconnected");
-    clearInterval(interval);
-  });
-
-  socket.on("enter", ({ itemId }) => {
-    console.log(itemId);
-    socket.emit("nice", { name: "Italian shoe", ammount: 10 });
-  });
-
-  socket.on("leave", () => {
-    console.log("Baba is discouraged");
-  });
-});
-
-const getApiAndEmit = (socket) => {
-  const response = new Date();
-  // Emitting a new message. Will be consumed by the client
-  socket.emit("FromAPI", response);
-};
-
-server.listen(port, () => console.log(`Listening on port ${port}`));
+app.listen(port, () => console.log(`Listening on port ${port}`));
